@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELITE INTELLIGENCE | OSINT Fusion Dashboard</title>
+    <style>
+        :root {
+            --bg-primary: #0a0c0f;
+            --bg-secondary: #0f1217;
+            --bg-tertiary: #141820;
+            --bg-panel: #11151b;
+            --border: #1a1f28;
+            --border-active: #1e2a3a;
+            --text-primary: #c8cdd4;
+            --text-secondary: #8893a4;
+            --text-muted: #5a6474;
+            --accent: #0a8fff;
+            --accent-glow: #0a8fff40;
+            --accent-2: #00c8e8;
+            --accent-3: #00e5a0;
+            --danger: #e04060;
+            --warning: #f0a030;
+            --success: #20d870;
+            --holographic: #0a8fff20;
+            --glass: #0f141bdd;
+            --glass-border: #1e2a3c80;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+            --font-sans: 'Inter', 'Segoe UI', 'SF Pro Display', system-ui, sans-serif;
+            --radius-sm: 4px;
+            --radius: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --shadow-panel: 0 4px 24px #00000060, 0 1px 2px #00000080;
+            --shadow-glow: 0 0 40px #0a8fff15, 0 0 8px #0a8fff08;
+            --transition-fast: 0.15s ease;
+            --transition: 0.25s ease;
+            --transition-slow: 0.4s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html {
+            font-size: 14px;
+            scroll-behavior: smooth;
+        }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* === BOOT SEQUENCE === */
+        #boot-sequence {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: #05080c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+            pointer-events: all;
+        }
+        #boot-sequence.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .boot-container {
+            text-align: center;
+            font-family: var(--font-mono);
+        }
+        .boot-ascii {
+            color: #0a8fff;
+            font-size: 8px;
+            line-height: 1.2;
+            letter-spacing: 0;
+            white-space: pre;
+            margin-bottom: 16px;
+            text-shadow: 0 0 20px #0a8fff80;
+            animation: bootPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes bootPulse {
+            0%,
+            100% {
+                opacity: 0.9;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        .boot-progress {
+            width: 320px;
+            height: 2px;
+            background: #1a2030;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 12px auto 8px;
+            position: relative;
+        }
+        .boot-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0a8fff, #00c8e8, #0a8fff);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.08s linear;
+            box-shadow: 0 0 12px #0a8fff60;
+        }
+        .boot-text {
+            color: #5a6474;
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+        }
+        .boot-text span {
+            color: #0a8fff;
+        }
+        .boot-line {
+            color: #3a4454;
+            font-size: 0.6rem;
+            margin-top: 4px;
+            font-family: var(--font-mono);
+            opacity: 0.7;
+        }
+
+        /* === MAIN LAYOUT === */
+        #app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        #app.ready {
+            opacity: 1;
+        }
+
+        /* === SIDEBAR === */
+        #sidebar {
+            width: 56px;
+            min-width: 56px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0;
+            gap: 4px;
+            z-index: 100;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+        #sidebar:hover {
+            width: 200px;
+        }
+        #sidebar .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            width: 100%;
+            cursor: pointer;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .sidebar-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #0a8fff, #004488);
+            flex-shrink: 0;
+            box-shadow: 0 0 16px #0a8fff40;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 0.7rem;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        .sidebar-brand-text {
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            color: #fff;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            text-transform: uppercase;
+        }
+        #sidebar:hover .sidebar-brand-text {
+            opacity: 1;
+        }
+        #sidebar nav {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            width: 100%;
+            flex: 1;
+        }
+        #sidebar nav .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-radius: 0;
+            transition: all var(--transition-fast);
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+            overflow: hidden;
+            position: relative;
+            font-weight: 500;
+            border-left: 2px solid transparent;
+        }
+        #sidebar nav .nav-item:hover {
+            color: var(--text-primary);
+            background: #1a203010;
+            border-left-color: #3a5060;
+        }
+        #sidebar nav .nav-item.active {
+            color: #fff;
+            background: #1a253520;
+            border-left-color: var(--accent);
+            text-shadow: 0 0 8px #0a8fff40;
+        }
+        .nav-icon {
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+        .nav-label {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        #sidebar:hover .nav-label {
+            opacity: 1;
+        }
+        #sidebar .sidebar-footer {
+            width: 100%;
+            padding: 8px 14px;
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            letter-spacing: 0.08em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-transform: uppercase;
+            border-top: 1px solid var(--border);
+            margin-top: auto;
+        }
+
+        /* === MAIN CONTENT === */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            background: var(--bg-primary);
+        }
+
+        /* === TOP BAR === */
+        #topbar {
+            height: 44px;
+            min-height: 44px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            z-index: 90;
+        }
+        #topbar .topbar-title {
+            font-weight: 700;
+            font-size: 0.8rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #fff;
+            white-space: nowrap;
+        }
+        #topbar .topbar-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.65rem;
+            color: var(--success);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-left: auto;
+        }
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 8px var(--success);
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                box-shadow: 0 0 4px var(--success);
+            }
+            50% {
+                box-shadow: 0 0 16px var(--success), 0 0 24px #20d87040;
+            }
+        }
+        #topbar .topbar-time {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.04em;
+        }
+
+        /* === DASHBOARD GRID === */
+        #dashboard {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-auto-rows: minmax(140px, auto);
+            gap: 10px;
+            scroll-behavior: smooth;
+        }
+        #dashboard::-webkit-scrollbar {
+            width: 4px;
+        }
+        #dashboard::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #dashboard::-webkit-scrollbar-thumb {
+            background: #1a2530;
+            border-radius: 4px;
+        }
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            position: relative;
+            overflow: hidden;
+            transition: all var(--transition);
+            box-shadow: var(--shadow-panel);
+            display: flex;
+            flex-direction: column;
+        }
+        .panel:hover {
+            border-color: var(--border-active);
+            box-shadow: var(--shadow-panel), var(--shadow-glow);
+        }
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.68rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .panel-header .panel-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent-glow);
+            flex-shrink: 0;
+        }
+        .panel-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            font-size: 0.72rem;
+            min-height: 0;
+        }
+        .col-12 {
+            grid-column: span 12;
+        }
+        .col-8 {
+            grid-column: span 8;
+        }
+        .col-6 {
+            grid-column: span 6;
+        }
+        .col-4 {
+            grid-column: span 4;
+        }
+        .col-3 {
+            grid-column: span 3;
+        }
+        .col-2 {
+            grid-column: span 2;
+        }
+
+        /* === STAT CARDS === */
+        .stat-card {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border: 1px solid transparent;
+            transition: all var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card:hover {
+            border-color: var(--border-active);
+            background: #181d26;
+        }
+        .stat-card .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #fff;
+            font-family: var(--font-mono);
+        }
+        .stat-card .stat-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+        }
+        .stat-card .stat-change {
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+        .stat-card .stat-change.up {
+            color: var(--success);
+        }
+        .stat-card .stat-change.down {
+            color: var(--danger);
+        }
+        .stat-glow {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            filter: blur(30px);
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* === ACTIVITY STREAM === */
+        .activity-stream {
+            flex: 1;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            max-height: 200px;
+        }
+        .activity-stream::-webkit-scrollbar {
+            width: 2px;
+        }
+        .activity-stream::-webkit-scrollbar-thumb {
+            background: #1a2530;
+            border-radius: 2px;
+        }
+        .activity-item {
+            padding: 5px 8px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background var(--transition-fast);
+            border-left: 2px solid transparent;
+            animation: fadeInRow 0.3s ease;
+        }
+        @keyframes fadeInRow {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .activity-item:hover {
+            background: #1a203008;
+        }
+        .activity-time {
+            color: var(--text-muted);
+            font-size: 0.55rem;
+            min-width: 44px;
+            flex-shrink: 0;
+        }
+        .activity-type {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.5rem;
+            letter-spacing: 0.06em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .activity-type.intel {
+            background: #0a8fff20;
+            color: #0a8fff;
+        }
+        .activity-type.alert {
+            background: #e0406020;
+            color: #e04060;
+        }
+        .activity-type.trace {
+            background: #f0a03020;
+            color: #f0a030;
+        }
+        .activity-type.monitor {
+            background: #20d87020;
+            color: #20d870;
+        }
+        .activity-msg {
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        /* === TERMINAL === */
+        #terminal-panel {
+            background: #05080c;
+            border: 1px solid #1a2030;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-family: var(--font-mono);
+            position: relative;
+        }
+        #terminal-panel .terminal-tabs {
+            display: flex;
+            background: #0a0e13;
+            border-bottom: 1px solid #1a2030;
+            gap: 0;
+        }
+        .terminal-tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.6rem;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition-fast);
+            text-transform: uppercase;
+        }
+        .terminal-tab.active {
+            color: #0a8fff;
+            border-bottom-color: #0a8fff;
+            background: #0a8fff08;
+        }
+        .terminal-tab:hover {
+            color: #fff;
+        }
+        #terminal-output {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            font-size: 0.6rem;
+            line-height: 1.6;
+            color: #8899aa;
+            min-height: 120px;
+            max-height: 280px;
+            background: #05080c;
+        }
+        #terminal-output::-webkit-scrollbar {
+            width: 2px;
+        }
+        #terminal-output::-webkit-scrollbar-thumb {
+            background: #1a2030;
+        }
+        #terminal-input-line {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: #0a0e13;
+            border-top: 1px solid #1a2030;
+            gap: 8px;
+        }
+        .terminal-prompt {
+            color: #0a8fff;
+            font-weight: 700;
+            font-size: 0.65rem;
+            white-space: nowrap;
+        }
+        #terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #c8cdd4;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            outline: none;
+            caret-color: #0a8fff;
+        }
+        #terminal-input::placeholder {
+            color: #3a4454;
+        }
+        .term-line {
+            padding: 1px 0;
+        }
+        .term-line .cmd {
+            color: #0a8fff;
+        }
+        .term-line .output {
+            color: #8899aa;
+        }
+        .term-line .info {
+            color: #20d870;
+        }
+        .term-line .warn {
+            color: #f0a030;
+        }
+        .term-line .err {
+            color: #e04060;
+        }
+
+        /* === MAP CANVAS === */
+        #map-canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: var(--radius);
+            background: #0a0f16;
+            cursor: crosshair;
+        }
+
+        /* === GRAPH CANVAS === */
+        #graph-canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: var(--radius);
+            background: #0a0f16;
+        }
+
+        /* === RADAR SWEEP === */
+        .radar-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0f16;
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        #radar-canvas {
+            width: 160px;
+            height: 160px;
+        }
+
+        /* === HEATMAP SIMPLE === */
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            gap: 2px;
+            flex: 1;
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #0a0f16;
+            padding: 4px;
+        }
+        .heatmap-cell {
+            border-radius: 2px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.15);
+            z-index: 2;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        /* === TIMELINE === */
+        .timeline-track {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            overflow-y: auto;
+            max-height: 200px;
+            padding-right: 4px;
+        }
+        .timeline-track::-webkit-scrollbar {
+            width: 2px;
+        }
+        .timeline-track::-webkit-scrollbar-thumb {
+            background: #1a2530;
+        }
+        .timeline-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 6px 0;
+            border-left: 2px solid #1a2530;
+            padding-left: 14px;
+            position: relative;
+            font-size: 0.6rem;
+            transition: all var(--transition-fast);
+        }
+        .timeline-item:hover {
+            border-left-color: #0a8fff;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 8px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #1a2530;
+            border: 2px solid #0a0c0f;
+        }
+        .timeline-item:hover::before {
+            background: #0a8fff;
+            box-shadow: 0 0 8px #0a8fff60;
+        }
+        .timeline-date {
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            font-size: 0.55rem;
+            min-width: 55px;
+            flex-shrink: 0;
+        }
+        .timeline-desc {
+            color: var(--text-secondary);
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 1200px) {
+            .col-8 {
+                grid-column: span 12;
+            }
+            .col-6 {
+                grid-column: span 12;
+            }
+            .col-4 {
+                grid-column: span 6;
+            }
+            .col-3 {
+                grid-column: span 6;
+            }
+            .col-2 {
+                grid-column: span 4;
+            }
+        }
+        @media (max-width: 768px) {
+            #sidebar {
+                width: 44px;
+                min-width: 44px;
+            }
+            #sidebar:hover {
+                width: 160px;
+            }
+            #dashboard {
+                grid-template-columns: repeat(6, 1fr);
+                gap: 6px;
+                padding: 8px;
+            }
+            .col-8,
+            .col-6,
+            .col-4,
+            .col-3,
+            .col-2 {
+                grid-column: span 6;
+            }
+            .panel {
+                padding: 10px;
+            }
+            #topbar {
+                padding: 0 10px;
+                height: 38px;
+                min-height: 38px;
+            }
+            #topbar .topbar-title {
+                font-size: 0.7rem;
+            }
+        }
+        @media (max-width: 480px) {
+            #sidebar {
+                width: 36px;
+                min-width: 36px;
+            }
+            #sidebar:hover {
+                width: 140px;
+            }
+            #dashboard {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
+                padding: 4px;
+            }
+            .col-8,
+            .col-6,
+            .col-4,
+            .col-3,
+            .col-2 {
+                grid-column: span 4;
+            }
+            .stat-card .stat-value {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* === MATRIX SUBTLE BG === */
+        .matrix-bg {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.03;
+            overflow: hidden;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: #0a8fff;
+            line-height: 1;
+            z-index: 0;
+            letter-spacing: 2px;
+        }
+
+        /* === GLOW ORB === */
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            pointer-events: none;
+            opacity: 0.15;
+            z-index: 0;
+        }
+
+        /* === TOOLTIP === */
+        .tooltip-custom {
+            position: absolute;
+            background: #0f141b;
+            border: 1px solid #1e2a3c;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.6rem;
+            pointer-events: none;
+            z-index: 200;
+            color: #c8cdd4;
+            font-family: var(--font-mono);
+            box-shadow: 0 8px 24px #00000080;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- BOOT SEQUENCE -->
+    <div id="boot-sequence">
+        <div class="boot-container">
+            <div class="boot-ascii">
+                ███████╗██╗     ██╗████████╗███████╗
+                ██╔════╝██║     ██║╚══██╔══╝██╔════╝
+                █████╗  ██║     ██║   ██║   █████╗
+                ██╔══╝  ██║     ██║   ██║   ██╔══╝
+                ███████╗███████╗██║   ██║   ███████╗
+                ╚══════╝╚══════╝╚═╝   ╚═╝   ╚══════╝
+                ██╗███╗   ██╗████████╗███████╗██╗
+                ██║████╗  ██║╚══██╔══╝██╔════╝██║
+                ██║██╔██╗ ██║   ██║   █████╗  ██║
+                ██║██║╚██╗██║   ██║   ██╔══╝  ██║
+                ██║██║ ╚████║   ██║   ███████╗███████╗
+                ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚══════╝
+            </div>
+            <div class="boot-progress"><div class="boot-progress-fill" id="boot-fill"></div></div>
+            <div class="boot-text">OSINT FUSION PLATFORM <span>v3.7.2</span></div>
+            <div class="boot-line" id="boot-status">INITIALIZING SECURE CHANNEL...</div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app">
+        <!-- SIDEBAR -->
+        <aside id="sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-logo">EI</div>
+                <span class="sidebar-brand-text">ELITE INTEL</span>
+            </div>
+            <nav>
+                <div class="nav-item active" data-panel="overview"><span class="nav-icon">◈</span><span class="nav-label">Overview</span></div>
+                <div class="nav-item" data-panel="map"><span class="nav-icon">◎</span><span class="nav-label">Geo Intel</span></div>
+                <div class="nav-item" data-panel="social"><span class="nav-icon">⬡</span><span class="nav-label">Social</span></div>
+                <div class="nav-item" data-panel="terminal"><span class="nav-icon">▸</span><span class="nav-label">Terminal</span></div>
+                <div class="nav-item" data-panel="graph"><span class="nav-icon">⬢</span><span class="nav-label">Graph</span></div>
+                <div class="nav-item" data-panel="threat"><span class="nav-icon">⚠</span><span class="nav-label">Threats</span></div>
+                <div class="nav-item" data-panel="evidence"><span class="nav-icon">◫</span><span class="nav-label">Evidence</span></div>
+            </nav>
+            <div class="sidebar-footer">SECURE LINK</div>
+        </aside>
+
+        <!-- MAIN -->
+        <div id="main">
+            <!-- TOPBAR -->
+            <div id="topbar">
+                <span class="topbar-title">⚡ OSINT FUSION CENTER</span>
+                <span class="topbar-time" id="topbar-time">--</span>
+                <span class="topbar-status"><span class="pulse-dot"></span> OPERATIONAL</span>
+            </div>
+
+            <!-- DASHBOARD -->
+            <div id="dashboard">
+                <!-- ROW 1: STAT CARDS -->
+                <div class="panel col-3">
+                    <div class="panel-header"><span>Intel Signals</span><span class="panel-dot"></span></div>
+                    <div class="panel-content">
+                        <div class="stat-card">
+                            <div class="stat-glow" style="background:#0a8fff;top:-15px;right:-15px;"></div>
+                            <div class="stat-value">1,247</div>
+                            <div class="stat-label">Active Investigations</div>
+                            <div class="stat-change up">▲ 12.4%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel col-3">
+                    <div class="panel-header"><span>Threat Level</span><span class="panel-dot"></span></div>
+                    <div class="panel-content">
+                        <div class="stat-card">
+                            <div class="stat-glow" style="background:#f0a030;top:-15px;right:-15px;"></div>
+                            <div class="stat-value">ELEVATED</div>
+                            <div class="stat-label">Global Risk Score: 72/100</div>
+                            <div class="stat-change down">▼ 3.1% from last cycle</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel col-3">
+                    <div class="panel-header"><span>Entities Tracked</span><span class="panel-dot"></span></div>
+                    <div class="panel-content">
+                        <div class="stat-card">
+                            <div class="stat-glow" style="background:#20d870;top:-15px;right:-15px;"></div>
+                            <div class="stat-value">89,334</div>
+                            <div class="stat-label">Correlated Profiles</div>
+                            <div class="stat-change up">▲ 5.7%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel col-3">
+                    <div class="panel-header"><span>AI Insights</span><span class="panel-dot"></span></div>
+                    <div class="panel-content">
+                        <div class="stat-card">
+                            <div class="stat-glow" style="background:#00c8e8;top:-15px;right:-15px;"></div>
+                            <div class="stat-value">2,891</div>
+                            <div class="stat-label">Generated Today</div>
+                            <div class="stat-change up">▲ 22.1%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROW 2: MAP + ACTIVITY -->
+                <div class="panel col-8" style="min-height:320px;">
+                    <div class="panel-header"><span>🌐 Global Investigation Map</span><span class="panel-dot"></span></div>
+                    <div class="panel-content" style="position:relative;">
+                        <canvas id="map-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="panel col-4" style="min-height:320px;">
+                    <div class="panel-header"><span>📡 Live Activity Stream</span><span class="panel-dot"></span></div>
+                    <div class="panel-content">
+                        <div class="activity-stream" id="activity-stream"></div>
+                    </div>
+                </div>
+
+                <!-- ROW 3: TERMINAL + RADAR + HEATMAP -->
+                <div class="panel col-6" id="terminal-panel">
+                    <div class="terminal-tabs">
+                        <div class="terminal-tab active" data-term="main">TERM-1: Investigation</div>
+                        <div class="terminal-tab" data-term="monitor">TERM-2: Monitor</div>
+                        <div class="terminal-tab" data-term="trace">TERM-3: Trace</div>
+                    </div>
+                    <div id="terminal-output"></div>
+                    <div id="terminal-input-line">
+                        <span class="terminal-prompt">root@elite-osint:~#</span>
+                        <input type="text" id="terminal-input" placeholder="Type command... (analyze | inspect | correlate | monitor | investigate | trace | geolocate | aggregate | classify | verify)" autofocus>
+                    </div>
+                </div>
+                <div class="panel col-3">
+                    <div class="panel-header"><span>📡 Tactical Radar</span><span class="panel-dot"></span></div>
+                    <div class="panel-content">
+                        <div class="radar-container"><canvas id="radar-canvas"></canvas></div>
+                    </div>
+                </div>
+                <div class="panel col-3">
+                    <div class="panel-header"><span>🔥 Threat Heatmap</span><span class="panel-dot"></span></div>
+                    <div class="panel-content">
+                        <div class="heatmap-grid" id="heatmap-grid"></div>
+                    </div>
+                </div>
+
+                <!-- ROW 4: GRAPH + TIMELINE -->
+                <div class="panel col-6" style="min-height:280px;">
+                    <div class="panel-header"><span>⬢ Entity Relationship Graph</span><span class="panel-dot"></span></div>
+                    <div class="panel-content" style="position:relative;">
+                        <canvas id="graph-canvas"></canvas>
+                    </div>
+                </div>
+                <div class="panel col-6" style="min-height:280px;">
+                    <div class="panel-header"><span>⏳ Investigation Timeline</span><span class="panel-dot"></span></div>
+                    <div class="panel-content">
+                        <div class="timeline-track" id="timeline-track"></div>
+                    </div>
+                </div>
+
+                <!-- ROW 5: EVIDENCE BOARD + NEWS -->
+                <div class="panel col-6" style="min-height:200px;">
+                    <div class="panel-header"><span>◫ Evidence Board</span><span class="panel-dot"></span></div>
+                    <div class="panel-content" id="evidence-board" style="display:flex;flex-wrap:wrap;gap:6px;overflow-y:auto;max-height:180px;">
+                    </div>
+                </div>
+                <div class="panel col-6" style="min-height:200px;">
+                    <div class="panel-header"><span>📰 News Intelligence Monitor</span><span class="panel-dot"></span></div>
+                    <div class="panel-content" id="news-feed" style="overflow-y:auto;max-height:180px;font-size:0.6rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip-custom" id="tooltip"></div>
+
+    <script>
+        (function() {
+            // ============ BOOT SEQUENCE ============
+            const bootSeq = document.getElementById('boot-sequence');
+            const bootFill = document.getElementById('boot-fill');
+            const bootStatus = document.getElementById('boot-status');
+            const app = document.getElementById('app');
+            const statusMessages = [
+                'INITIALIZING SECURE CHANNEL...',
+                'LOADING ENCRYPTION PROTOCOLS...',
+                'ESTABLISHING FUSION LINK...',
+                'MOUNTING INTELLIGENCE MODULES...',
+                'CALIBRATING SENSOR ARRAY...',
+                'ACTIVATING OSINT ENGINE...',
+                'SYSTEM READY.'
+            ];
+            let progress = 0;
+            const totalDuration = 1800;
+            const interval = 30;
+            const steps = totalDuration / interval;
+            const increment = 100 / steps;
+            let msgIndex = 0;
+
+            const bootInterval = setInterval(() => {
+                progress += increment;
+                if (progress > 100) progress = 100;
+                bootFill.style.width = progress + '%';
+                const newMsgIndex = Math.min(Math.floor((progress / 100) * statusMessages.length), statusMessages
+                    .length - 1);
+                if (newMsgIndex !== msgIndex) {
+                    msgIndex = newMsgIndex;
+                    bootStatus.textContent = statusMessages[msgIndex];
+                }
+                if (progress >= 100) {
+                    clearInterval(bootInterval);
+                    bootStatus.textContent = 'SYSTEM READY. ENGAGING DASHBOARD...';
+                    setTimeout(() => {
+                        bootSeq.classList.add('hidden');
+                        app.classList.add('ready');
+                        initDashboard();
+                    }, 400);
+                }
+            }, interval);
+
+            // ============ DASHBOARD INIT ============
+            function initDashboard() {
+                updateClock();
+                setInterval(updateClock, 1000);
+                initActivityStream();
+                initTimeline();
+                initHeatmap();
+                initEvidenceBoard();
+                initNewsFeed();
+                initMap();
+                initGraph();
+                initRadar();
+                initTerminal();
+                initNav();
+                animateAll();
+            }
+
+            function updateClock() {
+                const now = new Date();
+                const utc = now.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+                document.getElementById('topbar-time').textContent = utc;
+            }
+
+            // ============ NAVIGATION ============
+            function initNav() {
+                const navItems = document.querySelectorAll('#sidebar nav .nav-item');
+                navItems.forEach(item => {
+                    item.addEventListener('click', () => {
+                        navItems.forEach(n => n.classList.remove('active'));
+                        item.classList.add('active');
+                        const panel = item.dataset.panel;
+                        flashPanel(panel);
+                    });
+                });
+            }
+
+            function flashPanel(panelName) {
+                const dashboard = document.getElementById('dashboard');
+                dashboard.style.opacity = '0.85';
+                setTimeout(() => { dashboard.style.opacity = '1'; }, 200);
+                // Scroll to relevant section
+                const panels = dashboard.querySelectorAll('.panel');
+                let target = null;
+                if (panelName === 'map') target = panels[4];
+                if (panelName === 'terminal') target = panels[6];
+                if (panelName === 'graph') target = panels[9];
+                if (panelName === 'threat') target = panels[8];
+                if (panelName === 'evidence') target = panels[11];
+                if (panelName === 'social') target = panels[4];
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            // ============ ACTIVITY STREAM ============
+            function initActivityStream() {
+                const stream = document.getElementById('activity-stream');
+                const events = [
+                    { time: '14:23:01', type: 'intel', msg: 'New signal detected from public source' },
+                    { time: '14:22:45', type: 'trace', msg: 'IP geolocation completed: 4 nodes mapped' },
+                    { time: '14:22:30', type: 'alert', msg: 'Anomaly detected in social graph cluster' },
+                    { time: '14:22:12', type: 'monitor', msg: 'Keyword match: "data breach" on monitored feed' },
+                    { time: '14:21:58', type: 'intel', msg: 'Entity correlation: 3 profiles linked' },
+                    { time: '14:21:40', type: 'trace', msg: 'Digital footprint scan: 12 new artifacts' },
+                    { time: '14:21:22', type: 'alert', msg: 'Risk score change: +5 for entity #4421' },
+                    { time: '14:21:05', type: 'monitor', msg: 'Dark web mention simulation triggered' },
+                    { time: '14:20:48', type: 'intel', msg: 'AI insight generated for case #887' },
+                    { time: '14:20:30', type: 'trace', msg: 'Username correlation: 7 platforms found' },
+                    { time: '14:20:12', type: 'monitor', msg: 'Domain intelligence updated for 3 targets' },
+                    { time: '14:19:55', type: 'intel', msg: 'Sentiment analysis complete: 89% confidence' },
+                    { time: '14:19:38', type: 'alert', msg: 'Leak monitoring: new entry detected' },
+                    { time: '14:19:20', type: 'trace', msg: 'Metadata extraction: 42 fields parsed' },
+                ];
+                events.forEach((e, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'activity-item';
+                    div.style.animationDelay = (i * 0.03) + 's';
+                    div.innerHTML = `
+                <span class="activity-time">${e.time}</span>
+                <span class="activity-type ${e.type}">${e.type.toUpperCase()}</span>
+                <span class="activity-msg">${e.msg}</span>
+              `;
+                    stream.appendChild(div);
+                });
+                // Simulate live updates
+                setInterval(() => {
+                    const newEvent = events[Math.floor(Math.random() * events.length)];
+                    const div = document.createElement('div');
+                    div.className = 'activity-item';
+                    const now = new Date();
+                    const timeStr = now.toTimeString().slice(0, 8);
+                    div.innerHTML = `
+                <span class="activity-time">${timeStr}</span>
+                <span class="activity-type ${newEvent.type}">${newEvent.type.toUpperCase()}</span>
+                <span class="activity-msg">${newEvent.msg}</span>
+              `;
+                    stream.insertBefore(div, stream.firstChild);
+                    if (stream.children.length > 20) stream.removeChild(stream.lastChild);
+                }, 4000);
+            }
+
+            // ============ TIMELINE ============
+            function initTimeline() {
+                const track = document.getElementById('timeline-track');
+                const items = [
+                    { date: '2026-05-27', desc: 'Initial investigation opened — Case #OSINT-4421' },
+                    { date: '2026-05-26', desc: 'Social media correlation: 3 profiles identified' },
+                    { date: '2026-05-25', desc: 'IP geolocation trace: 5 endpoints mapped' },
+                    { date: '2026-05-24', desc: 'Metadata extraction: 127 fields analyzed' },
+                    { date: '2026-05-23', desc: 'Entity graph updated: 8 new nodes added' },
+                    { date: '2026-05-22', desc: 'Threat intelligence feed: elevated risk alert' },
+                    { date: '2026-05-21', desc: 'Digital footprint scan complete: 89 artifacts' },
+                    { date: '2026-05-20', desc: 'AI summary generated for evidence board' },
+                ];
+                items.forEach((item, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item';
+                    div.style.animationDelay = (i * 0.05) + 's';
+                    div.innerHTML = `
+                <span class="timeline-date">${item.date}</span>
+                <span class="timeline-desc">${item.desc}</span>
+              `;
+                    track.appendChild(div);
+                });
+            }
+
+            // ============ HEATMAP ============
+            function initHeatmap() {
+                const grid = document.getElementById('heatmap-grid');
+                const colors = ['#0a1a2a', '#0d2235', '#102d45', '#143a55', '#184a6a', '#1c5c80', '#207098', '#2485b0',
+                    '#289ac8', '#2cb0e0', '#30c8f8', '#40d4ff', '#50e0ff', '#60ecff', '#80f4ff', '#a0f8ff'
+                ];
+                for (let i = 0; i < 48; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'heatmap-cell';
+                    const colorIdx = Math.floor(Math.random() * colors.length);
+                    cell.style.backgroundColor = colors[colorIdx];
+                    cell.style.boxShadow = `0 0 ${4 + colorIdx}px ${colors[colorIdx]}40`;
+                    cell.addEventListener('mouseenter', () => {
+                        cell.style.backgroundColor = colors[Math.min(colorIdx + 3, colors.length - 1)];
+                        cell.style.boxShadow = `0 0 16px ${colors[Math.min(colorIdx+3,colors.length-1)]}`;
+                    });
+                    cell.addEventListener('mouseleave', () => {
+                        cell.style.backgroundColor = colors[colorIdx];
+                        cell.style.boxShadow = `0 0 ${4+colorIdx}px ${colors[colorIdx]}40`;
+                    });
+                    grid.appendChild(cell);
+                }
+                // Animate periodically
+                setInterval(() => {
+                    const cells = grid.querySelectorAll('.heatmap-cell');
+                    const randomCell = cells[Math.floor(Math.random() * cells.length)];
+                    const brightColor = colors[Math.floor(Math.random() * 8) + 8];
+                    randomCell.style.backgroundColor = brightColor;
+                    randomCell.style.boxShadow = `0 0 20px ${brightColor}`;
+                    setTimeout(() => {
+                        const origIdx = Math.floor(Math.random() * colors.length);
+                        randomCell.style.backgroundColor = colors[origIdx];
+                        randomCell.style.boxShadow = `0 0 ${4+origIdx}px ${colors[origIdx]}40`;
+                    }, 600);
+                }, 2000);
+            }
+
+            // ============ EVIDENCE BOARD ============
+            function initEvidenceBoard() {
+                const board = document.getElementById('evidence-board');
+                const tags = [
+                    'IP: 198.51.100.14', 'Email: j.doe@example.com', 'Username: shadow_ops',
+                    'Domain: target-site.org', 'Hash: a1b2c3d4e5', 'Phone: +1-555-0199',
+                    'Social: @investigate_this', 'File: report_v2.pdf', 'MAC: 00:1A:2B:3C:4D',
+                    'Cert: *.example.com', 'ASN: AS15169', 'Location: 37.7749,-122.4194'
+                ];
+                tags.forEach(tag => {
+                    const span = document.createElement('span');
+                    span.style.cssText = `
+                background:#1a2030;padding:5px 10px;border-radius:4px;font-size:0.6rem;
+                font-family:var(--font-mono);cursor:pointer;border:1px solid #2a3040;
+                transition:all 0.2s ease;color:#8899aa;
+              `;
+                    span.textContent = tag;
+                    span.addEventListener('mouseenter', () => {
+                        span.style.borderColor = '#0a8fff';
+                        span.style.color = '#fff';
+                        span.style.boxShadow = '0 0 8px #0a8fff30';
+                    });
+                    span.addEventListener('mouseleave', () => {
+                        span.style.borderColor = '#2a3040';
+                        span.style.color = '#8899aa';
+                        span.style.boxShadow = 'none';
+                    });
+                    board.appendChild(span);
+                });
+            }
+
+            // ============ NEWS FEED ============
+            function initNewsFeed() {
+                const feed = document.getElementById('news-feed');
+                const news = [
+                    '🔍 Public records show increased digital footprint correlation across platforms.',
+                    '📊 AI sentiment analysis indicates emerging threat pattern in monitored region.',
+                    '🌐 Domain intelligence: 3 new subdomains detected for target entity.',
+                    '⚠️ Leak monitoring: potential data exposure found on public repository.',
+                    '📱 Social media analysis: cross-platform identity correlation at 94% confidence.',
+                    '🔐 SSL certificate transparency log shows new entries for monitored domains.',
+                    '📍 Geolocation data aggregation reveals pattern in entity movement.',
+                    '📈 Risk scoring engine updated with new threat intelligence parameters.',
+                ];
+                news.forEach((n, i) => {
+                    const div = document.createElement('div');
+                    div.style.cssText = `
+                padding:6px 8px;border-bottom:1px solid #1a2030;cursor:pointer;
+                transition:all 0.2s ease;border-radius:3px;
+              `;
+                    div.textContent = n;
+                    div.addEventListener('mouseenter', () => {
+                        div.style.background = '#1a203020';
+                        div.style.borderLeft = '2px solid #0a8fff';
+                    });
+                    div.addEventListener('mouseleave', () => {
+                        div.style.background = 'transparent';
+                        div.style.borderLeft = '2px solid transparent';
+                    });
+                    feed.appendChild(div);
+                });
+            }
+
+            // ============ MAP CANVAS ============
+            function initMap() {
+                const canvas = document.getElementById('map-canvas');
+                const ctx = canvas.getContext('2d');
+                let nodes = [];
+                const numNodes = 35;
+
+                function resizeMap() {
+                    const rect = canvas.parentElement.getBoundingClientRect();
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                    generateNodes();
+                }
+
+                function generateNodes() {
+                    nodes = [];
+                    for (let i = 0; i < numNodes; i++) {
+                        nodes.push({
+                            x: Math.random() * canvas.width,
+                            y: Math.random() * canvas.height,
+                            r: 2 + Math.random() * 4,
+                            pulse: Math.random() * Math.PI * 2,
+                            speed: 0.02 + Math.random() * 0.04,
+                            color: Math.random() < 0.7 ? '#0a8fff' : (Math.random() < 0.5 ?
+                                '#00c8e8' : '#20d870'),
+                            connections: [],
+                        });
+                    }
+                    // Assign connections
+                    nodes.forEach(n => {
+                        const numCon = Math.floor(Math.random() * 3) + 1;
+                        for (let i = 0; i < numCon; i++) {
+                            const target = nodes[Math.floor(Math.random() * nodes.length)];
+                            if (target !== n && !n.connections.includes(target)) {
+                                n.connections.push(target);
+                            }
+                        }
+                    });
+                }
+
+                function drawMap() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    // Grid lines
+                    ctx.strokeStyle = '#1a253510';
+                    ctx.lineWidth = 0.5;
+                    const gridSize = 40;
+                    for (let x = gridSize; x < canvas.width; x += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, canvas.height);
+                        ctx.stroke();
+                    }
+                    for (let y = gridSize; y < canvas.height; y += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(canvas.width, y);
+                        ctx.stroke();
+                    }
+                    // Draw continent outlines (simplified)
+                    ctx.fillStyle = '#0a1a2a30';
+                    ctx.beginPath();
+                    ctx.ellipse(canvas.width * 0.2, canvas.height * 0.35, canvas.width * 0.12, canvas.height * 0.25,
+                        0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(canvas.width * 0.5, canvas.height * 0.3, canvas.width * 0.18, canvas.height * 0.2,
+                        -0.05, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(canvas.width * 0.75, canvas.height * 0.4, canvas.width * 0.08, canvas.height * 0.18,
+                        0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(canvas.width * 0.55, canvas.height * 0.6, canvas.width * 0.06, canvas.height * 0.1,
+                        0, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Connections
+                    nodes.forEach(n => {
+                        n.connections.forEach(target => {
+                            ctx.strokeStyle = '#1a304520';
+                            ctx.lineWidth = 0.6;
+                            ctx.beginPath();
+                            ctx.moveTo(n.x, n.y);
+                            ctx.lineTo(target.x, target.y);
+                            ctx.stroke();
+                        });
+                    });
+                    // Nodes
+                    nodes.forEach(n => {
+                        n.pulse += n.speed;
+                        const glow = 6 + Math.sin(n.pulse) * 3;
+                        ctx.fillStyle = n.color;
+                        ctx.shadowColor = n.color;
+                        ctx.shadowBlur = glow;
+                        ctx.beginPath();
+                        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Outer ring
+                        ctx.strokeStyle = n.color + '60';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.arc(n.x, n.y, n.r + 3 + Math.sin(n.pulse) * 2, 0, Math.PI * 2);
+                        ctx.stroke();
+                    });
+                    ctx.shadowBlur = 0;
+                    requestAnimationFrame(drawMap);
+                }
+
+                resizeMap();
+                window.addEventListener('resize', resizeMap);
+                drawMap();
+
+                // Click interaction
+                canvas.addEventListener('click', (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    // Add temporary ping
+                    const ping = { x, y, r: 5, alpha: 1, maxR: 40 };
+                    const pingInterval = setInterval(() => {
+                        ping.r += 2;
+                        ping.alpha -= 0.04;
+                        if (ping.alpha <= 0) clearInterval(pingInterval);
+                    }, 30);
+                    // Store ping for drawing (simplified - we add a node temporarily)
+                    nodes.push({
+                        x,
+                        y,
+                        r: 4,
+                        pulse: 0,
+                        speed: 0.08,
+                        color: '#ffffff',
+                        connections: [],
+                        temporary: true,
+                        ttl: 60
+                    });
+                    if (nodes.length > numNodes + 10) {
+                        nodes = nodes.filter(n => !n.temporary || n.ttl > 0);
+                    }
+                });
+            }
+
+            // ============ GRAPH CANVAS ============
+            function initGraph() {
+                const canvas = document.getElementById('graph-canvas');
+                const ctx = canvas.getContext('2d');
+                let graphNodes = [];
+                const numGraphNodes = 18;
+
+                function resizeGraph() {
+                    const rect = canvas.parentElement.getBoundingClientRect();
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                    generateGraphNodes();
+                }
+
+                function generateGraphNodes() {
+                    graphNodes = [];
+                    for (let i = 0; i < numGraphNodes; i++) {
+                        graphNodes.push({
+                            x: canvas.width * 0.1 + Math.random() * canvas.width * 0.8,
+                            y: canvas.height * 0.1 + Math.random() * canvas.height * 0.8,
+                            r: 3 + Math.random() * 6,
+                            vx: (Math.random() - 0.5) * 0.4,
+                            vy: (Math.random() - 0.5) * 0.4,
+                            color: ['#0a8fff', '#00c8e8', '#20d870', '#f0a030', '#e04060'][Math.floor(Math
+                                .random() * 5)],
+                            label: ['ENT', 'IP', 'DOM', 'SOC', 'HASH', 'CERT', 'EMAIL', 'USER'][Math.floor(Math
+                                .random() * 8)],
+                        });
+                    }
+                    // Connections
+                    graphNodes.forEach(n => {
+                        n.links = [];
+                        const numLinks = Math.floor(Math.random() * 3) + 1;
+                        for (let i = 0; i < numLinks; i++) {
+                            const target = graphNodes[Math.floor(Math.random() * graphNodes.length)];
+                            if (target !== n && !n.links.includes(target)) n.links.push(target);
+                        }
+                    });
+                }
+
+                function drawGraph() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    // Links
+                    graphNodes.forEach(n => {
+                        n.links.forEach(target => {
+                            ctx.strokeStyle = '#1a304530';
+                            ctx.lineWidth = 0.8;
+                            ctx.beginPath();
+                            ctx.moveTo(n.x, n.y);
+                            ctx.lineTo(target.x, target.y);
+                            ctx.stroke();
+                        });
+                    });
+                    // Nodes
+                    graphNodes.forEach(n => {
+                        n.x += n.vx;
+                        n.y += n.vy;
+                        if (n.x < 20 || n.x > canvas.width - 20) n.vx *= -1;
+                        if (n.y < 20 || n.y > canvas.height - 20) n.vy *= -1;
+                        ctx.fillStyle = n.color;
+                        ctx.shadowColor = n.color;
+                        ctx.shadowBlur = 10;
+                        ctx.beginPath();
+                        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = '#fff';
+                        ctx.font = '7px "JetBrains Mono", monospace';
+                        ctx.fillText(n.label, n.x - n.r - 4, n.y - n.r - 6);
+                    });
+                    requestAnimationFrame(drawGraph);
+                }
+
+                resizeGraph();
+                window.addEventListener('resize', resizeGraph);
+                drawGraph();
+            }
+
+            // ============ RADAR ============
+            function initRadar() {
+                const canvas = document.getElementById('radar-canvas');
+                const ctx = canvas.getContext('2d');
+                const size = 160;
+                canvas.width = size;
+                canvas.height = size;
+                let angle = 0;
+                const blips = [];
+                for (let i = 0; i < 12; i++) {
+                    blips.push({
+                        dist: 20 + Math.random() * 55,
+                        angle: Math.random() * Math.PI * 2,
+                        alpha: 0.6 + Math.random() * 0.4,
+                        speed: 0.003 + Math.random() * 0.008,
+                    });
+                }
+
+                function drawRadar() {
+                    ctx.clearRect(0, 0, size, size);
+                    const cx = size / 2,
+                        cy = size / 2,
+                        maxR = 70;
+                    // Rings
+                    for (let r = 15; r <= maxR; r += 15) {
+                        ctx.strokeStyle = '#1a304040';
+                        ctx.lineWidth = 0.8;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    // Cross lines
+                    ctx.strokeStyle = '#1a304030';
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy - maxR);
+                    ctx.lineTo(cx, cy + maxR);
+                    ctx.moveTo(cx - maxR, cy);
+                    ctx.lineTo(cx + maxR, cy);
+                    ctx.stroke();
+                    // Blips
+                    blips.forEach(b => {
+                        b.angle += b.speed;
+                        const bx = cx + Math.cos(b.angle) * b.dist;
+                        const by = cy + Math.sin(b.angle) * b.dist;
+                        ctx.fillStyle = `rgba(10,143,255,${b.alpha})`;
+                        ctx.shadowColor = '#0a8fff';
+                        ctx.shadowBlur = 6;
+                        ctx.beginPath();
+                        ctx.arc(bx, by, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.shadowBlur = 0;
+                    // Sweep line
+                    angle += 0.02;
+                    const sweepX = cx + Math.cos(angle) * maxR;
+                    const sweepY = cy + Math.sin(angle) * maxR;
+                    const gradient = ctx.createLinearGradient(cx, cy, sweepX, sweepY);
+                    gradient.addColorStop(0, 'rgba(10,143,255,0.5)');
+                    gradient.addColorStop(1, 'rgba(10,143,255,0)');
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(sweepX, sweepY);
+                    ctx.stroke();
+                    // Center dot
+                    ctx.fillStyle = '#0a8fff';
+                    ctx.shadowColor = '#0a8fff';
+                    ctx.shadowBlur = 12;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    requestAnimationFrame(drawRadar);
+                }
+                drawRadar();
+            }
+
+            // ============ TERMINAL ============
+            function initTerminal() {
+                const output = document.getElementById('terminal-output');
+                const input = document.getElementById('terminal-input');
+                const tabs = document.querySelectorAll('.terminal-tab');
+                let currentTerm = 'main';
+
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        currentTerm = tab.dataset.term;
+                        output.innerHTML = '';
+                        addTermLine('info', `Switched to terminal: ${currentTerm.toUpperCase()}`);
+                        addTermLine('output', 'Ready for commands...');
+                    });
+                });
+
+                function addTermLine(type, text) {
+                    const div = document.createElement('div');
+                    div.className = 'term-line ' + type;
+                    div.textContent = text;
+                    output.appendChild(div);
+                    output.scrollTop = output.scrollHeight;
+                }
+
+                const commandResponses = {
+                    'analyze': [
+                        { type: 'output', text: 'Running analysis engine...' },
+                        { type: 'info', text: '[OK] Data aggregation complete — 1,247 records processed' },
+                        { type: 'output', text: 'Correlation score: 0.89 | Confidence: HIGH' },
+                        { type: 'info', text: 'Entity clustering: 5 distinct groups identified' },
+                    ],
+                    'inspect': [
+                        { type: 'output', text: 'Inspecting target entity...' },
+                        { type: 'info', text: '[FOUND] Digital footprint: 34 artifacts' },
+                        { type: 'output', text: 'Metadata extraction: 89 fields | 12 sensitive' },
+                        { type: 'warn', text: '[WARNING] Anomaly detected in pattern analysis' },
+                    ],
+                    'correlate': [
+                        { type: 'output', text: 'Correlating across 14 data sources...' },
+                        { type: 'info', text: '[MATCH] Username "shadow_ops" found on 7 platforms' },
+                        { type: 'output', text: 'Social graph: 23 connections mapped' },
+                        { type: 'info', text: 'Risk score updated: 72/100' },
+                    ],
+                    'monitor': [
+                        { type: 'output', text: 'Activating monitoring subsystem...' },
+                        { type: 'info', text: '[ACTIVE] Monitoring 12 keywords across 8 channels' },
+                        { type: 'output', text: 'Alert threshold: MEDIUM | Scan interval: 30s' },
+                    ],
+                    'investigate': [
+                        { type: 'output', text: 'Opening investigation workspace...' },
+                        { type: 'info', text: '[CASE #OSINT-4421] Active' },
+                        { type: 'output', text: 'Evidence count: 17 | Timeline entries: 8' },
+                        { type: 'info', text: 'AI summary available — type "classify" to view' },
+                    ],
+                    'trace': [
+                        { type: 'output', text: 'Tracing digital trail...' },
+                        { type: 'info', text: '[TRACE] IP: 198.51.100.14 → AS15169 → US West' },
+                        { type: 'output', text: 'Hop count: 4 | Latency: 12ms avg' },
+                        { type: 'info', text: 'Geolocation: 37.7749, -122.4194 (San Francisco)' },
+                    ],
+                    'geolocate': [
+                        { type: 'output', text: 'Geolocating target...' },
+                        { type: 'info', text: '[LOC] Coordinates: 51.5074, -0.1278' },
+                        { type: 'output', text: 'Precision: 50m radius | Confidence: 94%' },
+                        { type: 'info', text: 'Reverse geocode: London, UK — Westminster area' },
+                    ],
+                    'aggregate': [
+                        { type: 'output', text: 'Aggregating public data...' },
+                        { type: 'info', text: '[DONE] 3,891 records from 22 sources' },
+                        { type: 'output', text: 'Deduplication: 412 duplicates removed' },
+                        { type: 'info', text: 'Final dataset: 3,479 unique entries' },
+                    ],
+                    'classify': [
+                        { type: 'output', text: 'Running AI classification...' },
+                        { type: 'info', text: '[RESULT] Threat category: Social Engineering' },
+                        { type: 'output', text: 'Sub-category: Phishing | Confidence: 0.91' },
+                        { type: 'warn', text: '[NOTE] 3 related indicators found in threat feed' },
+                    ],
+                    'verify': [
+                        { type: 'output', text: 'Verifying intelligence...' },
+                        { type: 'info', text: '[PASS] Source reliability: 0.87' },
+                        { type: 'output', text: 'Cross-reference: 5 confirming sources' },
+                        { type: 'info', text: 'Verification status: CONFIRMED' },
+                    ],
+                };
+
+                function executeCommand(cmd) {
+                    const cleanCmd = cmd.trim().toLowerCase();
+                    addTermLine('cmd', `root@elite-osint:~# ${cleanCmd}`);
+                    if (commandResponses[cleanCmd]) {
+                        commandResponses[cleanCmd].forEach(line => {
+                            setTimeout(() => addTermLine(line.type, line.text), 150 + Math.random() * 300);
+                        });
+                    } else if (cleanCmd === 'clear' || cleanCmd === 'cls') {
+                        output.innerHTML = '';
+                        addTermLine('info', 'Terminal cleared.');
+                    } else if (cleanCmd === 'help') {
+                        addTermLine('output',
+                            'Available: analyze | inspect | correlate | monitor | investigate | trace | geolocate | aggregate | classify | verify | clear | help'
+                            );
+                    } else if (cleanCmd.length > 0) {
+                        addTermLine('err', `Unknown command: "${cleanCmd}". Type "help" for available commands.`);
+                    }
+                }
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const cmd = input.value;
+                        if (cmd.trim()) executeCommand(cmd);
+                        input.value = '';
+                    }
+                });
+
+                // Initial output
+                addTermLine('info', 'ELITE INTELLIGENCE OSINT TERMINAL v3.7.2');
+                addTermLine('output', 'Secure channel established. All commands are simulated.');
+                addTermLine('output', 'Type "help" for available commands.');
+                addTermLine('output', '');
+
+                // Auto-focus input when clicking terminal area
+                document.getElementById('terminal-panel').addEventListener('click', () => {
+                    input.focus();
+                });
+            }
+
+            // ============ GLOBAL ANIMATIONS ============
+            function animateAll() {
+                // Subtle panel glow animation
+                const panels = document.querySelectorAll('.panel');
+                panels.forEach((panel, i) => {
+                    panel.style.animationDelay = (i * 0.05) + 's';
+                    panel.style.animation = 'fadeInPanel 0.5s ease forwards';
+                });
+            }
+
+            // Add fade-in animation style
+            const styleSheet = document.createElement('style');
+            styleSheet.textContent = `
+            @keyframes fadeInPanel {
+              from { opacity: 0; transform: translateY(8px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `;
+            document.head.appendChild(styleSheet);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'k') {
+                    e.preventDefault();
+                    document.getElementById('terminal-input').focus();
+                }
+                if (e.ctrlKey && e.key === '1') {
+                    e.preventDefault();
+                    document.querySelectorAll('#sidebar nav .nav-item')[0].click();
+                }
+                if (e.ctrlKey && e.key === '2') {
+                    e.preventDefault();
+                    document.querySelectorAll('#sidebar nav .nav-item')[1].click();
+                }
+                if (e.ctrlKey && e.key === '3') {
+                    e.preventDefault();
+                    document.querySelectorAll('#sidebar nav .nav-item')[2].click();
+                }
+                if (e.ctrlKey && e.key === '4') {
+                    e.preventDefault();
+                    document.querySelectorAll('#sidebar nav .nav-item')[3].click();
+                }
+            });
+
+            // ============ TOOLTIP SYSTEM ============
+            const tooltip = document.getElementById('tooltip');
+            document.addEventListener('mousemove', (e) => {
+                const target = e.target.closest('.stat-card, .heatmap-cell, .activity-item, .timeline-item');
+                if (target) {
+                    tooltip.style.opacity = '1';
+                    tooltip.style.left = (e.clientX + 16) + 'px';
+                    tooltip.style.top = (e.clientY - 30) + 'px';
+                    if (target.classList.contains('stat-card')) {
+                        tooltip.textContent = 'Click to expand intelligence view';
+                    } else if (target.classList.contains('heatmap-cell')) {
+                        tooltip.textContent = 'Threat intensity zone';
+                    } else if (target.classList.contains('activity-item')) {
+                        tooltip.textContent = 'Double-click to investigate';
+                    } else if (target.classList.contains('timeline-item')) {
+                        tooltip.textContent = 'Timeline entry — click for details';
+                    }
+                } else {
+                    tooltip.style.opacity = '0';
+                }
+            });
+
+            console.log('%c ELITE INTELLIGENCE %c OSINT FUSION DASHBOARD ',
+                'background:#0a8fff;color:#fff;padding:6px 12px;font-weight:bold;font-size:14px;',
+                'background:#0a0c0f;color:#0a8fff;padding:6px 12px;font-size:12px;');
+            console.log('%c Platform v3.7.2 | Author: SPY-E & 123Tool | All systems operational',
+                'color:#8899aa;font-size:11px;');
+            console.log('%c DISCLAIMER: This is a simulation platform for educational & professional OSINT research only.',
+                'color:#f0a030;font-size:10px;');
+        })();
+    </script>
+</body>
+      </html>
