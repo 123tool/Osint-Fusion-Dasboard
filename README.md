@@ -133,4 +133,3 @@ The multi‑tab terminal is a core component, offering an **authentic intelligen
 ---
 
 **© 2026 SPY-E & 123Tool | All Rights Reserved.**
-```
